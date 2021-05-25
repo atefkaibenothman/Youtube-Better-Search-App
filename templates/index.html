@@ -1,0 +1,34 @@
+<!doctype html>
+
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Youtube Better Search</title>
+    <style>
+    table, th, td {
+      border: 1px solid black;
+    }
+    </style>
+  </head>
+
+  <body>
+    <h1>Videos</h1>
+    <table>
+      <tr>
+        <th>Id</th>
+        <th>Title</th>
+        <th>Views</th>
+      </tr>
+      {% for video in videos %}
+        <tr>
+          <td>{{ video.id }}</td>
+          <td>{{ video.title }}</td>
+          <td>{{ video.views }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  </body>
+
+</html>
