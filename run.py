@@ -18,14 +18,14 @@ def get_search_parameters(api_key, search_term):
             "part": "snippet",
             "type": "video",
             "q": search_term,
-            "maxResults": "20"
+            "maxResults": "3"
             }
     return params
 
 def get_videos_parameters(api_key, video_id):
     params = {
             "key": api_key,
-            "part": ["snippet", "statistics"],
+            "part": ["snippet", "statistics", "player"],
             "id": video_id
             }
     return params
@@ -62,11 +62,13 @@ def parse_json_videos_response_to_dictionary(video_id, video_ids_dict, json_resp
     video_view_count = statistics["viewCount"] 
     video_like_count = statistics["likeCount"]
     video_dislike_count = statistics["dislikeCount"]
+    embed_html = json_response["items"][0]["player"]["embedHtml"]
     stats_dictionary = {
             "view_count": video_view_count,
             "like_count": video_like_count,
             "dislike_count": video_dislike_count,
-            "published_at": video_published_at_datetime
+            "published_at": video_published_at_datetime,
+            "embed_html": embed_html
             }
     video_data = {}
     video_data[video_id] = stats_dictionary
@@ -121,14 +123,17 @@ def get_channel_metadata_from_ids(api_key, youtube_channel_api_url, videos):
 
 # source: https://chrislovejoy.me/youtube-algorithm/
 def calculate_views_to_subscriber_ratio(num_views, num_subs):
+    num_views = int(num_views.replace(",",""))
+    num_subs = int(num_subs.replace(",",""))
     if (num_subs == 0 or num_subs == -1):
         return 0
     ratio = num_views / num_subs
     return ratio
 
 def custom_score(num_views, ratio):
+    num_views = int(num_views)
     ratio = min(ratio, 5)
-    score = (num_views* ratio)
+    score = (num_views * ratio)
     return score
 
 def convert_int_to_comma_sep_string(n):
@@ -188,13 +193,35 @@ def print_table(videos):
     pTable.add_rows(rows)
     print(pTable)
 
-if __name__ == "__main__":
+def add_score_to_videos(videos):
+    date_now = datetime.now()
+    for video in videos:
+        for video_id in video:
+           date = video[video_id]["published_at"]
+           datetime_object = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
+           date_ago = timeago.format(datetime_object, date_now, "en")
+           views_subscriber_ratio = calculate_views_to_subscriber_ratio(video[video_id]["view_count"], video[video_id]["channel"]["channel_subscriber_count"])
+           score = custom_score(video[video_id]["view_count"], views_subscriber_ratio)
+           like_count = int(video[video_id]["like_count"])
+           dislike_count = int(video[video_id]["dislike_count"])
+           try:
+               like_dislike_ratio_float = like_count / (like_count + dislike_count)
+               like_dislike_ratio = "{:.1%}".format(like_dislike_ratio_float)
+           except ZeroDivisionError:
+               like_dislike_ratio = video[video_id]["like_count"]
+           video[video_id]["date_ago"] = date_ago
+           video[video_id]["view_sub_ratio"] = views_subscriber_ratio
+           video[video_id]["score"] = score
+           video[video_id]["like_dislike_ratio"] = like_dislike_ratio
+    return videos
+           
+
+
+def output_data_to_file(search_term):
     credentials_file_path = "./credentials.json"
     youtube_search_api_url = "https://www.googleapis.com/youtube/v3/search"
     youtube_videos_api_url = "https://www.googleapis.com/youtube/v3/videos"
     youtube_channel_api_url = "https://www.googleapis.com/youtube/v3/channels"
-
-    search_term = str(sys.argv[1])
 
     api_key = get_api_key_from_file(credentials_file_path)
 
@@ -205,5 +232,28 @@ if __name__ == "__main__":
     # get channel metadata and add to videos dictionary 
     videos = get_channel_metadata_from_ids(api_key, youtube_channel_api_url, videos)
 
+    videos = add_score_to_videos(videos)
+
+    with open("data.json", "w") as fp:
+        json.dump(videos, fp)
+
+if __name__ == "__main__":
+    output_data_to_file()
+    # credentials_file_path = "./credentials.json"
+    # youtube_search_api_url = "https://www.googleapis.com/youtube/v3/search"
+    # youtube_videos_api_url = "https://www.googleapis.com/youtube/v3/videos"
+    # youtube_channel_api_url = "https://www.googleapis.com/youtube/v3/channels"
+
+    # search_term = str(sys.argv[1])
+
+    # api_key = get_api_key_from_file(credentials_file_path)
+
+    # # get video ids
+    # video_ids_dict = get_video_ids_from_search(api_key, youtube_search_api_url, search_term)
+    # # get video metadata and create videos dictionary
+    # videos = get_video_metadata_from_ids(api_key, youtube_videos_api_url, video_ids_dict)
+    # # get channel metadata and add to videos dictionary 
+    # videos = get_channel_metadata_from_ids(api_key, youtube_channel_api_url, videos)
+
     # print table
-    print_table(videos)
+    # print_table(videos)

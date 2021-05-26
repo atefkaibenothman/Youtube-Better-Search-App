@@ -15,18 +15,38 @@
 
   <body>
     <h1>Videos</h1>
+    <form method="POST">
+      <input name="search">
+      <input type="submit">
+    </form>
     <table>
       <tr>
         <th>Id</th>
+        <th>Video</th>
         <th>Title</th>
-        <th>Views</th>
+        <th>View Count</th>
+        <th>Published</th>
+        <th>Like/Dislike %</th>
+        <th>Channel Name</th>
+        <th>Subscribers</th>
+        <th>Score</th>
+        <th>View/Sub Ratio</th> 
       </tr>
       {% for video in videos %}
-        <tr>
-          <td>{{ video.id }}</td>
-          <td>{{ video.title }}</td>
-          <td>{{ video.views }}</td>
-        </tr>
+        {% for video_id, video_object in video.items() %}
+          <tr>
+            <td><a href="https://www.youtube.com/watch?v={{ video_id }}">{{ video_id }}</a></td>
+            <td><div>{{ video_object["embed_html"]  | safe }}</div></td>
+            <td>{{ video_object["title"] }}</td>
+            <td>{{ video_object["view_count"] }}</td>
+            <td>{{ video_object["date_ago"] }}</td>
+            <td>{{ video_object["like_dislike_ratio"] }}</td>
+            <td>{{ video_object["channel"]["title"] }}</td>
+            <td>{{ video_object["channel"]["channel_subscriber_count"] }}</td>
+            <td>{{ video_object["score"] }}</td>
+            <td>{{ video_object["view_sub_ratio"] }}</td>
+          </tr>
+        {% endfor %}
       {% endfor %}
     </table>
   </body>
